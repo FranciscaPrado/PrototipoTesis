@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "5365175084",
+    "project_id": "crisisconnect-97ed4",
+    "storage_bucket": "crisisconnect-97ed4.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:5365175084:android:7fde5f000c263debc51289",
+        "android_client_info": {
+          "package_name": "com.ex"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDOloeQ7xAApT9zqy_sPsa8hFiqbigODPA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:5365175084:android:0f7993e9c570ccf0c51289",
+        "android_client_info": {
+          "package_name": "com.example.crisisconnect"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDOloeQ7xAApT9zqy_sPsa8hFiqbigODPA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
