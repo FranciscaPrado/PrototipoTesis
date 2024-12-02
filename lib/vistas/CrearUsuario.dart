@@ -1,8 +1,8 @@
-// ignore: file_names
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/services.dart';
-import 'dart:io';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:geocoding/geocoding.dart';
 import 'package:crisisconnect/vistas/Menu.dart';
 
 class CrearUsuario extends StatefulWidget {
@@ -19,9 +19,14 @@ class _CrearUsuarioState extends State<CrearUsuario> {
   final TextEditingController phoneController = TextEditingController(text: '+569');
   final TextEditingController usernameController = TextEditingController();
   final TextEditingController addressController = TextEditingController();
-  File? selectedImage;
 
-  final Map<String, List<String>> regionCities = {
+  Set<Marker> _markers = {};
+  LatLng _initialLocation = const LatLng(-33.4489, -70.6693); // Santiago
+  LatLng? _selectedLocation;
+
+  late GoogleMapController _mapController;
+
+  final Map<String, List<String>> regionCities =  {
     'Arica y Parinacota': ['Arica', 'Putre', 'Camarones', 'General Lagos'],
     'Tarapacá': ['Iquique', 'Alto Hospicio', 'Pozo Almonte', 'Pica', 'Huara', 'Camiña', 'Colchane'],
     'Antofagasta': ['Antofagasta', 'Calama', 'Tocopilla', 'Mejillones', 'San Pedro de Atacama', 'Taltal'],
@@ -47,9 +52,11 @@ class _CrearUsuarioState extends State<CrearUsuario> {
       final userData = {
         'username': usernameController.text,
         'phone': phoneController.text,
-        'address': addressController.text,
         'region': selectedRegion,
         'city': selectedCity,
+        'address': addressController.text,
+        'latitude': _selectedLocation?.latitude,
+        'longitude': _selectedLocation?.longitude,
         'created_at': FieldValue.serverTimestamp(),
       };
 
@@ -58,10 +65,6 @@ class _CrearUsuarioState extends State<CrearUsuario> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Usuario guardado con éxito')),
       );
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => Menu()),
-      );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error al guardar usuario: $e')),
@@ -69,6 +72,36 @@ class _CrearUsuarioState extends State<CrearUsuario> {
     }
   }
 
+  void _onMapCreated(GoogleMapController controller) {
+    _mapController = controller;
+  }
+
+void _searchAndSelectAddress(String address) async {
+    try {
+      List<Location> locations = await locationFromAddress(address);
+      if (locations.isNotEmpty) {
+        LatLng selectedLatLng = LatLng(locations.first.latitude, locations.first.longitude);
+        setState(() {
+          _selectedLocation = selectedLatLng;
+          _markers.clear();
+          _markers.add(Marker(
+            markerId: const MarkerId('selected_location'),
+            position: selectedLatLng,
+            infoWindow: const InfoWindow(title: 'Ubicación seleccionada'),
+          ));
+        });
+
+        // Mueve la cámara hacia la ubicación seleccionada
+        _mapController.animateCamera(
+          CameraUpdate.newLatLngZoom(selectedLatLng, 15), // Nivel de zoom ajustable
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error al buscar la dirección: $e')),
+      );
+    }
+  }
 
   @override
   void dispose() {
@@ -93,7 +126,7 @@ class _CrearUsuarioState extends State<CrearUsuario> {
         ),
         backgroundColor: const Color.fromARGB(255, 3, 149, 162),
       ),
-      body: SingleChildScrollView(
+       body: SingleChildScrollView(
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 600),
@@ -104,17 +137,6 @@ class _CrearUsuarioState extends State<CrearUsuario> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const SizedBox(height: 40),
-                  const Text(
-                    'Seleccionar imagen de perfil',
-                    style: TextStyle(
-                      fontFamily: 'Cantarell',
-                      fontSize: 16,
-                      color: Color(0xFF5DA3A6),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  const SizedBox(height: 20),
-                  const SizedBox(height: 20),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20.0),
                     child: TextFormField(
@@ -264,19 +286,38 @@ class _CrearUsuarioState extends State<CrearUsuario> {
                         color: Color.fromARGB(255, 235, 235, 235),
                         fontSize: 16, 
                       ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Por favor, ingresa tu dirección';
-                        }
-                        return null;
-                      },
+                      onFieldSubmitted: (value) => _searchAndSelectAddress(value),
+                      ),
                     ),
-                  ),
+                    const SizedBox(height: 20), 
+                    SizedBox(
+                      height: 300,
+                      child: GoogleMap(
+                        onMapCreated: _onMapCreated,
+                        markers: _markers,
+                        onTap: (LatLng position) {
+                          setState(() {
+                            _selectedLocation = position;
+                            _markers.clear();
+                            _markers.add(Marker(
+                              markerId: const MarkerId('selected_location'),
+                              position: position,
+                              infoWindow: const InfoWindow(title: 'Ubicación seleccionada'),
+                            ));
+                          });
+                        },
+                        initialCameraPosition: CameraPosition(
+                          target: _initialLocation,
+                          zoom: 10,
+                        ),
+                      ),
+                    ),
                   const SizedBox(height: 40),
                   ElevatedButton(
                     onPressed: () {
                       if (_formKey.currentState!.validate()) {
                         saveUserData();
+                        MaterialPageRoute(builder: (context) => Menu());
                       }
                     },
                     style: ElevatedButton.styleFrom(
@@ -301,3 +342,4 @@ class _CrearUsuarioState extends State<CrearUsuario> {
     );
   }
 }
+

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
-class Catastrofes extends StatelessWidget {
+class Catastrofes extends StatefulWidget {
   final String tipo;
   final String zona;
   final String epicentro;
@@ -12,6 +14,7 @@ class Catastrofes extends StatelessWidget {
   final String areasAfectadas;
   final String tipoIncendio;
   final String nivelEmergencia;
+  final String direccion;
 
   const Catastrofes({
     super.key,
@@ -26,11 +29,48 @@ class Catastrofes extends StatelessWidget {
     required this.areasAfectadas,
     required this.tipoIncendio,
     required this.nivelEmergencia,
+    required this.direccion,
   });
 
   @override
-  Widget build(BuildContext context) {
+  _CatastrofesState createState() => _CatastrofesState();
+}
 
+class _CatastrofesState extends State<Catastrofes> {
+  late GoogleMapController _mapController;
+  LatLng _mapLocation = LatLng(0.0, 0.0); 
+  bool _isLocationReady = false; 
+
+  @override
+  void initState() {
+    super.initState();
+    _getCatastrofeLocation(); 
+  }
+
+ 
+  void _getCatastrofeLocation() async {
+    final querySnapshot = await FirebaseFirestore.instance
+        .collection('catastrofes') 
+        .where('tipo', isEqualTo: widget.tipo) 
+        .where('lugar', isEqualTo: widget.zona)
+        .limit(1) 
+        .get();
+
+    if (querySnapshot.docs.isNotEmpty) {
+      var data = querySnapshot.docs.first.data();
+      if (data['LatLng'] != null) {
+        GeoPoint geoPoint = data['LatLng']; 
+
+        setState(() {
+          _mapLocation = LatLng(geoPoint.latitude, geoPoint.longitude);
+          _isLocationReady = true; 
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         iconTheme: const IconThemeData(color: Colors.white),
@@ -50,7 +90,7 @@ class Catastrofes extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Zona de crisis: $zona',
+              'Zona de crisis: ${widget.zona}',
               style: const TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.bold,
@@ -58,8 +98,32 @@ class Catastrofes extends StatelessWidget {
                 color: Color.fromARGB(255, 3, 149, 162),
               ),
             ),
-            const SizedBox(height: 20),
-            const SizedBox(height: 20),
+            const SizedBox(height: 40),
+            Container(
+              height: 250,
+              child: _isLocationReady
+                  ? GoogleMap(
+                      initialCameraPosition: CameraPosition(
+                        target: _mapLocation, 
+                        zoom: 15.0, 
+                      ),
+                      markers: {
+                        Marker(
+                          markerId: const MarkerId('catastrofe'),
+                          position: _mapLocation,
+                          infoWindow: const InfoWindow(
+                            title: 'Ubicación de la catástrofe',
+                          ),
+                        ),
+                      },
+                      onMapCreated: (GoogleMapController controller) {
+                        _mapController = controller;
+                      },
+                    )
+                  : const Center(
+                      child: CircularProgressIndicator(),
+                    ),
+            ),
             const Center(
               child: Divider(
                 color: Color(0xFFE2CD0E),
@@ -69,17 +133,27 @@ class Catastrofes extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 20),
+            Text(
+              '${widget.tipo} en ${widget.zona}',
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                fontFamily: 'Cantarell',
+                color: Color(0xFFE2CD0E),
+              ),
+            ),
+            const SizedBox(height: 20),
             Container(
               padding: const EdgeInsets.all(16.0),
               decoration: BoxDecoration(
-                color: const Color.fromARGB(232, 161, 184, 185),
+                color: const Color.fromARGB(179, 236, 236, 233),
                 borderRadius: BorderRadius.circular(8.0),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (tipo == 'sismo') _detalleSismo(),
-                  if (tipo == 'incendio') _detalleIncendio(),
+                  if (widget.tipo == 'sismo') _detalleSismo(),
+                  if (widget.tipo == 'incendio') _detalleIncendio(),
                 ],
               ),
             ),
@@ -93,11 +167,11 @@ class Catastrofes extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _detalleFila('Epicentro:', epicentro),
-        _detalleFila('Magnitud:', magnitud.toString()),
-        _detalleFila('Alcance:', alcance),
-        _detalleFila('Probabilidad de réplicas:', probabilidadReplica),
-        _detalleFila('Probabilidad de tsunami:', probabilidadTsunami),
+        _detalleFila('Epicentro:', widget.epicentro),
+        _detalleFila('Magnitud:', widget.magnitud),
+        _detalleFila('Alcance:', widget.alcance),
+        _detalleFila('Probabilidad de réplicas:', widget.probabilidadReplica),
+        _detalleFila('Probabilidad de tsunami:', widget.probabilidadTsunami),
       ],
     );
   }
@@ -106,10 +180,11 @@ class Catastrofes extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _detalleFila('Foco:', foco),
-        _detalleFila('Áreas afectadas:', areasAfectadas),
-        _detalleFila('Tipo de incendio:', tipoIncendio),
-        _detalleFila('Nivel de incendio:', nivelEmergencia),
+        _detalleFila('Foco:', widget.foco),
+        _detalleFila('Áreas afectadas: ', widget.areasAfectadas),
+        _detalleFila('Tipo de incendio: ', widget.tipoIncendio),
+        _detalleFila('Nivel de emergencia: ', widget.nivelEmergencia),
+        _detalleFila('Dirección: ', widget.direccion),
       ],
     );
   }
@@ -125,7 +200,7 @@ class Catastrofes extends StatelessWidget {
               fontSize: 16,
               fontFamily: 'Cantarell',
               fontWeight: FontWeight.bold,
-              color: Color.fromARGB(255, 235, 235, 235),
+              color: Color.fromARGB(255, 3, 149, 162),
             ),
           ),
           Expanded(
@@ -134,7 +209,7 @@ class Catastrofes extends StatelessWidget {
               style: const TextStyle(
                 fontSize: 16,
                 fontFamily: 'Cantarell',
-                color: Color.fromARGB(255, 235, 235, 235),
+                color: Color.fromARGB(255, 3, 149, 162),
               ),
             ),
           ),
@@ -143,5 +218,6 @@ class Catastrofes extends StatelessWidget {
     );
   }
 }
+
 
 

@@ -1,11 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:crisisconnect/vistas/Catastrofes.dart';
+import 'package:provider/provider.dart';
+import 'package:crisisconnect/vistas/user_provider.dart';
+import 'notificaciones.dart';
 
-class Menu extends StatelessWidget {
+class Menu extends StatefulWidget {
+  Menu({super.key});
+
+  @override
+  _MenuState createState() => _MenuState();
+}
+
+class _MenuState extends State<Menu> {
+  final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  Menu({super.key});
 
   Future<List<Map<String, dynamic>>> obtenerCatastrofes() async {
     try {
@@ -27,6 +38,19 @@ class Menu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final username = Provider.of<UserProvider>(context).username;
+
+    if (username.isNotEmpty) {
+      Future.delayed(Duration.zero, () {
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return NotificationPopup(); 
+          },
+        );
+      });
+    }
+
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
@@ -40,7 +64,7 @@ class Menu extends StatelessWidget {
         ),
         backgroundColor: const Color.fromARGB(255, 3, 149, 162),
       ),
-      body: FutureBuilder<List<Map<String, dynamic>>>(  
+      body: FutureBuilder<List<Map<String, dynamic>>>( 
         future: obtenerCatastrofes(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -149,7 +173,7 @@ class Menu extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.all(16.0),
                         decoration: BoxDecoration(
-                          color: const Color.fromARGB(255, 235, 235, 235),
+                          color: const Color.fromARGB(179, 236, 236, 233),
                           borderRadius: BorderRadius.circular(8.0),
                         ),
                         child: Column(
@@ -174,6 +198,7 @@ class Menu extends StatelessWidget {
                                       areasAfectadas: catastrofe['areas_afectadas'] ?? '',
                                       tipoIncendio: catastrofe['tipo_incendio'] ?? '',
                                       nivelEmergencia: catastrofe['nivel_emergencia'] ?? '',
+                                      direccion: catastrofe['direccion'] ?? '',
                                     ),
                                   ),
                                 );
@@ -192,13 +217,11 @@ class Menu extends StatelessWidget {
                                       style: TextStyle(
                                         fontSize: 18,
                                         color: Color(0xFFE2CD0E),
+                                        fontFamily: 'Cantarell',
+                                        fontWeight: FontWeight.bold,
                                       ),
                                     ),
-                                    Icon(
-                                      Icons.arrow_forward_ios,
-                                      color: Color(0xFFE2CD0E),
-                                      size: 24,
-                                    ),
+                                    Icon(Icons.arrow_forward, color: Color(0xFFE2CD0E)),
                                   ],
                                 ),
                               ),
@@ -226,6 +249,7 @@ class Menu extends StatelessWidget {
     );
   }
 }
+
 
 
 
